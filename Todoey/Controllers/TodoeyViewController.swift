@@ -2,19 +2,17 @@ import UIKit
 
 class TodoeyViewController: UITableViewController {
     
-    var itemArray = ["Buy bread", "Call Pasha", "Find headphones"]
-    var itemArray_2: [CellItem]
+    var itemArray = [Item]()
     
-    
-    let defaults = UserDefaults.standard
+     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        if let items = defaults.array(forKey: "TodoeyListArray") as? [String]{
-            itemArray = items
-        }
-    
+        print(dataFilePath)
+        
+        loadItems()
+        
     }
     //MARK: - TableView Datasource methods
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -23,20 +21,35 @@ class TodoeyViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         
-        cell.textLabel?.text = itemArray[indexPath.row]
+        let item = itemArray[indexPath.row]
+        
+        cell.textLabel?.text = item.title
+        
+        cell.accessoryType = item.done ? .checkmark : .none
+//        The same think in 5 lines below
+//        if item.done == true{
+//            cell.accessoryType = .checkmark
+//        }else{
+//            cell.accessoryType = .none
+//        }
         
         return cell
     }
     //MARK: - Table View Delegates Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath)
     {
-        //        print(itemArray[indexPath.row])
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark{
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }
-        else{
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+//        The same think in 5 lines below
+//
+//        if itemArray[indexPath.row].done == false{
+//            itemArray[indexPath.row].done = true
+//        }else{
+//            itemArray[indexPath.row].done = false
+//        }
+        
+        saveItems()
+        
         tableView.deselectRow(at: indexPath, animated: true)
         
     }
@@ -49,11 +62,15 @@ class TodoeyViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add item", style: .default) { (action) in
             // What will happends when user clicks into add item button on out UIAlert
-            self.itemArray.append(textfield.text!)
             
-            self.defaults.set(self.itemArray, forKey: "TodoeyListArray")
+
+            var newItem = Item()
+            newItem.title = textfield.text!
             
-            self.tableView.reloadData()
+            self.itemArray.append(newItem)
+            
+            self.saveItems()
+            
         }
         
         alert.addTextField { (alertTextField) in
@@ -66,7 +83,30 @@ class TodoeyViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
         
     }
-    
-}
+    //MARK: - Module manupulation methods
 
+    func saveItems() {
+        let encoder = PropertyListEncoder()
+                   do{
+                       let data = try encoder.encode(itemArray)
+                       try data.write(to: dataFilePath!)
+                   }catch{
+                       print("Error with encoding items \(error)")
+                   }
+                   
+        self.tableView.reloadData()
+    }
+    
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do {
+            itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print("Error decoding items \(error) ")
+            }
+            
+        }
+    }
+}
 
